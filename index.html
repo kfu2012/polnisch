@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Słówka Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: eine schmale Lernspalte – Status oben, Karteikarte in der Mitte, Liste & Import als zweiter Tab */
+:root{
+  --bg:#f3f4f7; --surface:#ffffff; --ink:#1b2233; --muted:#5f6880; --line:#dde1ea;
+  --accent:#2f4bb3; --accent-ink:#ffffff; --warm:#c26a12;
+  --good:#1f7a4a; --mid:#a7700b; --bad:#b0322e;
+  --chip:#e8ebf5;
+  --f-word:"Literata",Georgia,"Times New Roman",serif;
+  --f-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12151d; --surface:#1b2030; --ink:#e7eaf2; --muted:#9aa3b8; --line:#2c3347;
+  --accent:#8ea4ff; --accent-ink:#0f1430; --warm:#f0a554;
+  --good:#5fcf94; --mid:#e8b44a; --bad:#f07b72; --chip:#262d42; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151d; --surface:#1b2030; --ink:#e7eaf2; --muted:#9aa3b8; --line:#2c3347;
+  --accent:#8ea4ff; --accent-ink:#0f1430; --warm:#f0a554;
+  --good:#5fcf94; --mid:#e8b44a; --bad:#f07b72; --chip:#262d42; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:flex;flex-direction:column;gap:18px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--f-word);font-weight:700;font-size:1.7rem;margin:0;letter-spacing:-.01em}
+h1 span{color:var(--warm)}
+.sub{color:var(--muted);font-size:.85rem;margin:2px 0 0}
+nav{display:flex;gap:4px;background:var(--chip);padding:4px;border-radius:10px}
+nav button{border:0;background:transparent;color:var(--muted);font:500 .9rem var(--f-ui);padding:7px 14px;border-radius:7px;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font:500 1.35rem var(--f-mono);font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+.stat.due b{color:var(--warm)}
+.boxes{display:flex;gap:3px;height:8px;border-radius:4px;overflow:hidden;background:var(--chip)}
+.boxes i{display:block;height:100%}
+.legend{display:flex;justify-content:space-between;color:var(--muted);font-size:.72rem;margin-top:4px}
+.panel{display:flex;flex-direction:column;gap:14px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+select,input,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+textarea{width:100%;min-height:120px;font-family:var(--f-mono);font-size:.85rem}
+label.lbl{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px}
+button.btn{font:600 .9rem var(--f-ui);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:9px 14px;cursor:pointer}
+button.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.btn:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 22px 22px;min-height:260px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 24px -16px rgba(20,30,60,.35)}
+.card-top{display:flex;justify-content:space-between;color:var(--muted);font-size:.78rem;gap:8px}
+.tag{background:var(--chip);border-radius:20px;padding:2px 9px}
+.word{font-family:var(--f-word);font-weight:500;font-size:clamp(1.5rem,5vw,2.1rem);text-align:center;text-wrap:balance;margin:auto 0 0}
+.answer{font-family:var(--f-word);font-size:clamp(1.15rem,4vw,1.5rem);text-align:center;color:var(--accent);text-wrap:balance;margin:0 0 auto;border-top:1px dashed var(--line);padding-top:14px}
+.dir{font:500 .72rem var(--f-mono);letter-spacing:.08em;text-align:center;color:var(--muted)}
+.rate{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rate button{font:600 .92rem var(--f-ui);padding:12px 6px;border-radius:10px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.rate .r1{border-color:var(--bad);color:var(--bad)}
+.rate .r2{border-color:var(--mid);color:var(--mid)}
+.rate .r3{background:var(--good);border-color:var(--good);color:var(--surface)}
+.rate small{display:block;font-weight:400;font-size:.72rem;opacity:.85}
+.kbd{color:var(--muted);font-size:.75rem;text-align:center}
+.speak{align-self:center;border:0;background:var(--chip);color:var(--ink);border-radius:20px;padding:4px 12px;font:500 .8rem var(--f-ui);cursor:pointer}
+.empty{text-align:center;color:var(--muted);padding:30px 10px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.empty h2{font-family:var(--f-word);color:var(--ink);margin:0;font-size:1.3rem}
+.progressbar{height:4px;background:var(--chip);border-radius:2px;overflow:hidden}
+.progressbar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.box h3{margin:0;font-size:1rem}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.formgrid .full{grid-column:1/-1}
+.formgrid input,.formgrid select{width:100%}
+.list{display:flex;flex-direction:column}
+.cat{font:600 .75rem var(--f-ui);text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:14px 4px 6px;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line)}
+.row .pl{font-family:var(--f-word);font-weight:500;min-width:0;overflow-wrap:anywhere}
+.row .de{color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.row .act{display:flex;gap:6px;align-items:center}
+.lvl{display:inline-flex;gap:2px}
+.lvl i{width:5px;height:12px;border-radius:1px;background:var(--chip)}
+.lvl i.on{background:var(--good)}
+.icon{border:0;background:transparent;color:var(--muted);cursor:pointer;font:500 .8rem var(--f-ui);padding:4px 6px;border-radius:6px}
+.icon:hover{background:var(--chip);color:var(--ink)}
+.icon.danger{color:var(--bad)}
+.note{font-size:.82rem;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:.88rem;z-index:20}
+.filebar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.banner{background:var(--chip);border-radius:8px;padding:8px 12px;font-size:.84rem;color:var(--muted)}
+@media (max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}.formgrid{grid-template-columns:1fr}.row{grid-template-columns:1fr auto}.row .de{grid-column:1;grid-row:2}.row .act{grid-row:1/3;grid-column:2}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+body{margin:0}[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Słówka <span>Trainer</span></h1>
+      <p class="sub">Polnisch ↔ Deutsch · Wiederholung nach Lernstand</p>
+    </div>
+    <nav role="tablist">
+      <button role="tab" id="tab-learn" aria-selected="true">Lernen</button>
+      <button role="tab" id="tab-list" aria-selected="false">Vokabeln</button>
+    </nav>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+  <div class="filebar">
+    <span id="fileState" class="note">Gespeichert im Browser</span>
+    <span class="controls">
+      <button class="btn" id="connectBtn" type="button" hidden>JSON-Datei verbinden</button>
+      <button class="btn" id="exportBtn" type="button">Als JSON sichern</button>
+      <label class="btn" for="importFile" style="cursor:pointer">JSON laden</label>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </span>
+  </div>
+
+  <section>
+    <div class="stats">
+      <div class="stat"><b id="s-total">–</b><small>Vokabeln</small></div>
+      <div class="stat due"><b id="s-due">–</b><small>Heute fällig</small></div>
+      <div class="stat"><b id="s-new">–</b><small>Neu</small></div>
+      <div class="stat"><b id="s-known">–</b><small>Sitzt (Stufe 4+)</small></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="boxes" id="boxes"></div>
+      <div class="legend"><span>neu</span><span>Stufe 1 → 6</span><span>sitzt</span></div>
+    </div>
+  </section>
+
+  <!-- LERNEN -->
+  <section id="view-learn" class="panel">
+    <div class="controls">
+      <select id="dir" aria-label="Richtung">
+        <option value="mix">Gemischt</option>
+        <option value="pl">Polnisch → Deutsch</option>
+        <option value="de">Deutsch → Polnisch</option>
+      </select>
+      <select id="catSel" aria-label="Kategorie"><option value="">Alle Kategorien</option></select>
+      <select id="newCount" aria-label="Neue pro Runde">
+        <option value="5">5 neue pro Runde</option>
+        <option value="10" selected>10 neue pro Runde</option>
+        <option value="20">20 neue pro Runde</option>
+        <option value="0">keine neuen</option>
+      </select>
+    </div>
+    <div class="progressbar"><i id="pbar" style="width:0"></i></div>
+    <div id="stage"></div>
+  </section>
+
+  <!-- LISTE -->
+  <section id="view-list" class="panel" hidden>
+    <div class="box">
+      <h3 id="formTitle">Neue Vokabel</h3>
+      <form id="addForm" class="formgrid" autocomplete="off">
+        <div><label class="lbl" for="f-pl">Polnisch</label><input id="f-pl" required placeholder="np. Dziękuję"></div>
+        <div><label class="lbl" for="f-de">Deutsch</label><input id="f-de" required placeholder="z. B. Danke"></div>
+        <div class="full"><label class="lbl" for="f-cat">Kategorie</label><input id="f-cat" list="catList" placeholder="z. B. Arbeit und Büro"><datalist id="catList"></datalist></div>
+        <div class="full controls"><button class="btn primary" type="submit" id="saveBtn">Hinzufügen</button><button class="btn" type="button" id="cancelEdit" hidden>Abbrechen</button><span class="note">Polnische Zeichen: ą ć ę ł ń ó ś ź ż</span></div>
+      </form>
+    </div>
+    <details class="box">
+      <summary style="cursor:pointer;font-weight:600">Mehrere auf einmal einfügen</summary>
+      <p class="note" style="margin:0">Eine Vokabel pro Zeile, Polnisch und Deutsch mit <b>;</b> oder Tab getrennt. Bereits vorhandene Wörter werden übersprungen.</p>
+      <textarea id="bulk" placeholder="Kawa ; Kaffee&#10;Herbata ; Tee"></textarea>
+      <div class="controls"><input id="bulkCat" list="catList" placeholder="Kategorie (optional)"><button class="btn primary" id="bulkBtn" type="button">Einfügen</button></div>
+    </details>
+    <div class="controls"><input id="search" type="search" placeholder="Suchen …" style="flex:1"></div>
+    <div id="list" class="list"></div>
+  </section>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function(){
+const DAY=864e5, INTERVALS=[0,1,3,7,14,30,60]; // Tage je Stufe 0..6
+const $=id=>document.getElementById(id);
+let VOCAB=new Map(), PROG=new Map(), db=null, uid=null, mode="local";
+let session=null, editId=null, armedDelete=null;
+
+/* ---------- Speicher ---------- */
+const SEED={"v001": {"pl": "Cześć", "de": "Hallo / Tschüss", "cat": "Begrüßung und Verabschiedung", "order": 1, "added": "2026-11-04"}, "v002": {"pl": "Dzień dobry", "de": "Guten Tag", "cat": "Begrüßung und Verabschiedung", "order": 2, "added": "2026-11-04"}, "v003": {"pl": "Do widzenia", "de": "Auf Wiedersehen", "cat": "Begrüßung und Verabschiedung", "order": 3, "added": "2026-11-04"}, "v004": {"pl": "Na razie", "de": "Bis später / Tschüss", "cat": "Begrüßung und Verabschiedung", "order": 4, "added": "2026-11-04"}, "v005": {"pl": "Dziękuję", "de": "Danke", "cat": "Begrüßung und Verabschiedung", "order": 5, "added": "2026-11-04"}, "v006": {"pl": "Dzięki", "de": "Danke (umgangssprachlich)", "cat": "Begrüßung und Verabschiedung", "order": 6, "added": "2026-11-04"}, "v007": {"pl": "Tak", "de": "Ja", "cat": "Begrüßung und Verabschiedung", "order": 7, "added": "2026-11-04"}, "v008": {"pl": "Nie", "de": "Nein", "cat": "Begrüßung und Verabschiedung", "order": 8, "added": "2026-11-04"}, "v009": {"pl": "Jasne", "de": "Klar / Natürlich", "cat": "Begrüßung und Verabschiedung", "order": 9, "added": "2026-11-04"}, "v010": {"pl": "Dobrze", "de": "Gut", "cat": "Begrüßung und Verabschiedung", "order": 10, "added": "2026-11-04"}, "v011": {"pl": "W porządku", "de": "In Ordnung", "cat": "Begrüßung und Verabschiedung", "order": 11, "added": "2026-11-04"}, "v012": {"pl": "Miło mi", "de": "Freut mich", "cat": "Begrüßung und Verabschiedung", "order": 12, "added": "2026-11-04"}, "v013": {"pl": "Świetnie", "de": "Super / Großartig", "cat": "Begrüßung und Verabschiedung", "order": 13, "added": "2026-11-04"}, "v014": {"pl": "Ja", "de": "Ich", "cat": "Sich vorstellen und kennenlernen", "order": 14, "added": "2026-11-04"}, "v015": {"pl": "Ty", "de": "Du", "cat": "Sich vorstellen und kennenlernen", "order": 15, "added": "2026-11-04"}, "v016": {"pl": "A ty?", "de": "Und du?", "cat": "Sich vorstellen und kennenlernen", "order": 16, "added": "2026-11-04"}, "v017": {"pl": "Jak masz na imię?", "de": "Wie heißt du?", "cat": "Sich vorstellen und kennenlernen", "order": 17, "added": "2026-11-04"}, "v018": {"pl": "Mam na imię Paweł.", "de": "Ich heiße Paweł.", "cat": "Sich vorstellen und kennenlernen", "order": 18, "added": "2026-11-04"}, "v019": {"pl": "Skąd jesteś?", "de": "Woher kommst du?", "cat": "Sich vorstellen und kennenlernen", "order": 19, "added": "2026-11-04"}, "v020": {"pl": "Jestem z Niemiec.", "de": "Ich komme aus Deutschland.", "cat": "Sich vorstellen und kennenlernen", "order": 20, "added": "2026-11-04"}, "v021": {"pl": "Gdzie mieszkasz?", "de": "Wo wohnst du?", "cat": "Sich vorstellen und kennenlernen", "order": 21, "added": "2026-11-04"}, "v022": {"pl": "Mieszkam w Niemczech.", "de": "Ich wohne in Deutschland.", "cat": "Sich vorstellen und kennenlernen", "order": 22, "added": "2026-11-04"}, "v023": {"pl": "Mieszkam w pobliżu.", "de": "Ich wohne in der Nähe.", "cat": "Sich vorstellen und kennenlernen", "order": 23, "added": "2026-11-04"}, "v024": {"pl": "Mieszkam niedaleko pracy.", "de": "Ich wohne nicht weit von der Arbeit entfernt.", "cat": "Sich vorstellen und kennenlernen", "order": 24, "added": "2026-11-04"}, "v025": {"pl": "Jak się masz?", "de": "Wie geht es dir?", "cat": "Befinden und Gefühle", "order": 25, "added": "2026-11-04"}, "v026": {"pl": "Jak się masz dzisiaj?", "de": "Wie geht es dir heute?", "cat": "Befinden und Gefühle", "order": 26, "added": "2026-11-04"}, "v027": {"pl": "Jak się czujesz?", "de": "Wie fühlst du dich?", "cat": "Befinden und Gefühle", "order": 27, "added": "2026-11-04"}, "v028": {"pl": "Jak się dziś czujesz?", "de": "Wie fühlst du dich heute?", "cat": "Befinden und Gefühle", "order": 28, "added": "2026-11-04"}, "v029": {"pl": "Co u ciebie?", "de": "Wie läuft es bei dir?", "cat": "Befinden und Gefühle", "order": 29, "added": "2026-11-04"}, "v030": {"pl": "Dobrze, dziękuję.", "de": "Gut, danke.", "cat": "Befinden und Gefühle", "order": 30, "added": "2026-11-04"}, "v031": {"pl": "Też dobrze.", "de": "Auch gut.", "cat": "Befinden und Gefühle", "order": 31, "added": "2026-11-04"}, "v032": {"pl": "Jestem zmęczony.", "de": "Ich bin müde.", "cat": "Befinden und Gefühle", "order": 32, "added": "2026-11-04"}, "v033": {"pl": "Trochę zmęczony.", "de": "Ein bisschen müde.", "cat": "Befinden und Gefühle", "order": 33, "added": "2026-11-04"}, "v034": {"pl": "Źle", "de": "Schlecht", "cat": "Befinden und Gefühle", "order": 34, "added": "2026-11-04"}, "v035": {"pl": "Nic nowego", "de": "Nichts Neues", "cat": "Befinden und Gefühle", "order": 35, "added": "2026-11-04"}, "v036": {"pl": "Miło słyszeć.", "de": "Schön zu hören.", "cat": "Befinden und Gefühle", "order": 36, "added": "2026-11-04"}, "v037": {"pl": "Praca", "de": "Arbeit", "cat": "Arbeit und Büro", "order": 37, "added": "2026-11-04"}, "v038": {"pl": "Pracuję", "de": "Ich arbeite", "cat": "Arbeit und Büro", "order": 38, "added": "2026-11-04"}, "v039": {"pl": "Pracowałem", "de": "Ich habe gearbeitet", "cat": "Arbeit und Büro", "order": 39, "added": "2026-11-04"}, "v040": {"pl": "Pracujesz", "de": "Du arbeitest", "cat": "Arbeit und Büro", "order": 40, "added": "2026-11-04"}, "v041": {"pl": "Jak w pracy?", "de": "Wie läuft es bei der Arbeit?", "cat": "Arbeit und Büro", "order": 41, "added": "2026-11-04"}, "v042": {"pl": "Jak było w pracy?", "de": "Wie war es bei der Arbeit?", "cat": "Arbeit und Büro", "order": 42, "added": "2026-11-04"}, "v043": {"pl": "Jak było w pracy wczoraj?", "de": "Wie war es gestern bei der Arbeit?", "cat": "Arbeit und Büro", "order": 43, "added": "2026-11-04"}, "v044": {"pl": "Dużo pracy", "de": "Viel Arbeit", "cat": "Arbeit und Büro", "order": 44, "added": "2026-11-04"}, "v045": {"pl": "W biurze", "de": "Im Büro", "cat": "Arbeit und Büro", "order": 45, "added": "2026-11-04"}, "v046": {"pl": "W domu", "de": "Zu Hause", "cat": "Arbeit und Büro", "order": 46, "added": "2026-11-04"}, "v047": {"pl": "Spotkanie", "de": "Besprechung / Treffen", "cat": "Arbeit und Büro", "order": 47, "added": "2026-11-04"}, "v048": {"pl": "Mam spotkanie.", "de": "Ich habe eine Besprechung.", "cat": "Arbeit und Büro", "order": 48, "added": "2026-11-04"}, "v049": {"pl": "Było dużo spotkań.", "de": "Es gab viele Besprechungen.", "cat": "Arbeit und Büro", "order": 49, "added": "2026-11-04"}, "v050": {"pl": "Było ciężko.", "de": "Es war anstrengend.", "cat": "Arbeit und Büro", "order": 50, "added": "2026-11-04"}, "v051": {"pl": "Było spokojnie.", "de": "Es war ruhig.", "cat": "Arbeit und Büro", "order": 51, "added": "2026-11-04"}, "v052": {"pl": "Było dobrze.", "de": "Es war gut.", "cat": "Arbeit und Büro", "order": 52, "added": "2026-11-04"}, "v053": {"pl": "Wczoraj", "de": "Gestern", "cat": "Gestern, heute und morgen", "order": 53, "added": "2026-11-04"}, "v054": {"pl": "Dziś", "de": "Heute", "cat": "Gestern, heute und morgen", "order": 54, "added": "2026-11-04"}, "v055": {"pl": "Dzisiaj", "de": "Heute", "cat": "Gestern, heute und morgen", "order": 55, "added": "2026-11-04"}, "v056": {"pl": "Jutro", "de": "Morgen", "cat": "Gestern, heute und morgen", "order": 56, "added": "2026-11-04"}, "v057": {"pl": "Pracowałem wczoraj.", "de": "Ich habe gestern gearbeitet.", "cat": "Gestern, heute und morgen", "order": 57, "added": "2026-11-04"}, "v058": {"pl": "Pracuję dziś.", "de": "Ich arbeite heute.", "cat": "Gestern, heute und morgen", "order": 58, "added": "2026-11-04"}, "v059": {"pl": "Pracuję jutro.", "de": "Ich arbeite morgen.", "cat": "Gestern, heute und morgen", "order": 59, "added": "2026-11-04"}, "v060": {"pl": "Pracowałem wczoraj w biurze.", "de": "Ich habe gestern im Büro gearbeitet.", "cat": "Gestern, heute und morgen", "order": 60, "added": "2026-11-04"}, "v061": {"pl": "Pracuję dziś w biurze.", "de": "Ich arbeite heute im Büro.", "cat": "Gestern, heute und morgen", "order": 61, "added": "2026-11-04"}, "v062": {"pl": "Pracuję jutro w biurze.", "de": "Ich arbeite morgen im Büro.", "cat": "Gestern, heute und morgen", "order": 62, "added": "2026-11-04"}, "v063": {"pl": "Pracuję dziś w domu.", "de": "Ich arbeite heute zu Hause.", "cat": "Gestern, heute und morgen", "order": 63, "added": "2026-11-04"}, "v064": {"pl": "Pracuję jutro w domu.", "de": "Ich arbeite morgen zu Hause.", "cat": "Gestern, heute und morgen", "order": 64, "added": "2026-11-04"}, "v065": {"pl": "Pracuję dziś w biurze, bo mam spotkanie.", "de": "Ich arbeite heute im Büro, weil ich eine Besprechung habe.", "cat": "Gestern, heute und morgen", "order": 65, "added": "2026-11-04"}, "v066": {"pl": "Weekend", "de": "Wochenende", "cat": "Wochenende und Freizeit", "order": 66, "added": "2026-11-04"}, "v067": {"pl": "W weekend", "de": "Am Wochenende", "cat": "Wochenende und Freizeit", "order": 67, "added": "2026-11-04"}, "v068": {"pl": "Co robisz w weekend?", "de": "Was machst du am Wochenende?", "cat": "Wochenende und Freizeit", "order": 68, "added": "2026-11-04"}, "v069": {"pl": "Co robiłeś w weekend?", "de": "Was hast du am Wochenende gemacht?", "cat": "Wochenende und Freizeit", "order": 69, "added": "2026-11-04"}, "v070": {"pl": "Jak minął ci weekend?", "de": "Wie war dein Wochenende?", "cat": "Wochenende und Freizeit", "order": 70, "added": "2026-11-04"}, "v071": {"pl": "Jak było w weekend?", "de": "Wie war es am Wochenende?", "cat": "Wochenende und Freizeit", "order": 71, "added": "2026-11-04"}, "v072": {"pl": "Odpoczywam", "de": "Ich ruhe mich aus", "cat": "Wochenende und Freizeit", "order": 72, "added": "2026-11-04"}, "v073": {"pl": "Odpoczywałem", "de": "Ich habe mich ausgeruht", "cat": "Wochenende und Freizeit", "order": 73, "added": "2026-11-04"}, "v074": {"pl": "W weekend odpoczywam.", "de": "Am Wochenende ruhe ich mich aus.", "cat": "Wochenende und Freizeit", "order": 74, "added": "2026-11-04"}, "v075": {"pl": "Byłem", "de": "Ich war", "cat": "Wochenende und Freizeit", "order": 75, "added": "2026-11-04"}, "v076": {"pl": "Byłem w domu.", "de": "Ich war zu Hause.", "cat": "Wochenende und Freizeit", "order": 76, "added": "2026-11-04"}, "v077": {"pl": "Z rodziną", "de": "Mit der Familie", "cat": "Wochenende und Freizeit", "order": 77, "added": "2026-11-04"}, "v078": {"pl": "Co robiłeś?", "de": "Was hast du gemacht?", "cat": "Wochenende und Freizeit", "order": 78, "added": "2026-11-04"}, "v079": {"pl": "Jestem", "de": "Ich bin", "cat": "Wichtige Verben und Verbformen", "order": 79, "added": "2026-11-04"}, "v080": {"pl": "Jesteś", "de": "Du bist", "cat": "Wichtige Verben und Verbformen", "order": 80, "added": "2026-11-04"}, "v081": {"pl": "Mam", "de": "Ich habe", "cat": "Wichtige Verben und Verbformen", "order": 81, "added": "2026-11-04"}, "v082": {"pl": "Masz", "de": "Du hast", "cat": "Wichtige Verben und Verbformen", "order": 82, "added": "2026-11-04"}, "v083": {"pl": "Mieszkam", "de": "Ich wohne", "cat": "Wichtige Verben und Verbformen", "order": 83, "added": "2026-11-04"}, "v084": {"pl": "Mieszkasz", "de": "Du wohnst", "cat": "Wichtige Verben und Verbformen", "order": 84, "added": "2026-11-04"}, "v085": {"pl": "Robisz", "de": "Du machst", "cat": "Wichtige Verben und Verbformen", "order": 85, "added": "2026-11-04"}, "v086": {"pl": "Robiłeś", "de": "Du hast gemacht", "cat": "Wichtige Verben und Verbformen", "order": 86, "added": "2026-11-04"}, "v087": {"pl": "Idę", "de": "Ich gehe", "cat": "Wichtige Verben und Verbformen", "order": 87, "added": "2026-11-04"}, "v088": {"pl": "Czujesz się", "de": "Du fühlst dich", "cat": "Wichtige Verben und Verbformen", "order": 88, "added": "2026-11-04"}, "v089": {"pl": "Powiedz", "de": "Sag", "cat": "Wichtige Verben und Verbformen", "order": 89, "added": "2026-11-04"}, "v090": {"pl": "Zapytaj", "de": "Frag", "cat": "Wichtige Verben und Verbformen", "order": 90, "added": "2026-11-04"}, "v091": {"pl": "Spróbuj", "de": "Versuch", "cat": "Wichtige Verben und Verbformen", "order": 91, "added": "2026-11-04"}, "v092": {"pl": "Co?", "de": "Was?", "cat": "Fragewörter und kleine Wörter", "order": 92, "added": "2026-11-04"}, "v093": {"pl": "Jak?", "de": "Wie?", "cat": "Fragewörter und kleine Wörter", "order": 93, "added": "2026-11-04"}, "v094": {"pl": "Gdzie?", "de": "Wo?", "cat": "Fragewörter und kleine Wörter", "order": 94, "added": "2026-11-04"}, "v095": {"pl": "Skąd?", "de": "Woher?", "cat": "Fragewörter und kleine Wörter", "order": 95, "added": "2026-11-04"}, "v096": {"pl": "Kiedy?", "de": "Wann?", "cat": "Fragewörter und kleine Wörter", "order": 96, "added": "2026-11-04"}, "v097": {"pl": "Dlaczego?", "de": "Warum?", "cat": "Fragewörter und kleine Wörter", "order": 97, "added": "2026-11-04"}, "v098": {"pl": "Kto?", "de": "Wer?", "cat": "Fragewörter und kleine Wörter", "order": 98, "added": "2026-11-04"}, "v099": {"pl": "Czy", "de": "Ob / Einleitung einer Ja-Nein-Frage / oder", "cat": "Fragewörter und kleine Wörter", "order": 99, "added": "2026-11-04"}, "v100": {"pl": "I", "de": "Und", "cat": "Fragewörter und kleine Wörter", "order": 100, "added": "2026-11-04"}, "v101": {"pl": "A", "de": "Und / aber (je nach Zusammenhang)", "cat": "Fragewörter und kleine Wörter", "order": 101, "added": "2026-11-04"}, "v102": {"pl": "Ale", "de": "Aber", "cat": "Fragewörter und kleine Wörter", "order": 102, "added": "2026-11-04"}, "v103": {"pl": "Bo", "de": "Weil", "cat": "Fragewörter und kleine Wörter", "order": 103, "added": "2026-11-04"}, "v104": {"pl": "Też", "de": "Auch", "cat": "Fragewörter und kleine Wörter", "order": 104, "added": "2026-11-04"}, "v105": {"pl": "Trochę", "de": "Ein bisschen", "cat": "Fragewörter und kleine Wörter", "order": 105, "added": "2026-11-04"}, "v106": {"pl": "Dużo", "de": "Viel", "cat": "Fragewörter und kleine Wörter", "order": 106, "added": "2026-11-04"}, "v107": {"pl": "W", "de": "In / im", "cat": "Fragewörter und kleine Wörter", "order": 107, "added": "2026-11-04"}, "v108": {"pl": "Z", "de": "Aus / mit (je nach Zusammenhang)", "cat": "Fragewörter und kleine Wörter", "order": 108, "added": "2026-11-04"}, "v109": {"pl": "Do", "de": "Nach / zu", "cat": "Fragewörter und kleine Wörter", "order": 109, "added": "2026-11-04"}, "v110": {"pl": "Niedaleko", "de": "Nicht weit von", "cat": "Fragewörter und kleine Wörter", "order": 110, "added": "2026-11-04"}, "v111": {"pl": "W pobliżu", "de": "In der Nähe", "cat": "Fragewörter und kleine Wörter", "order": 111, "added": "2026-11-04"}, "v112": {"pl": "Pracujesz dziś w biurze czy w domu?", "de": "Arbeitest du heute im Büro oder zu Hause?", "cat": "Weitere Sätze aus dem Unterricht", "order": 112, "added": "2026-11-04"}, "v113": {"pl": "Też pracuję w biurze.", "de": "Ich arbeite auch im Büro.", "cat": "Weitere Sätze aus dem Unterricht", "order": 113, "added": "2026-11-04"}, "v114": {"pl": "Też odpoczywam w weekend.", "de": "Ich ruhe mich am Wochenende auch aus.", "cat": "Weitere Sätze aus dem Unterricht", "order": 114, "added": "2026-11-04"}, "v115": {"pl": "Dobrze, ale dużo pracy.", "de": "Gut, aber viel Arbeit.", "cat": "Weitere Sätze aus dem Unterricht", "order": 115, "added": "2026-11-04"}, "v116": {"pl": "Też z Niemiec.", "de": "Auch aus Deutschland.", "cat": "Weitere Sätze aus dem Unterricht", "order": 116, "added": "2026-11-04"}, "v117": {"pl": "Idę do domu.", "de": "Ich gehe nach Hause.", "cat": "Weitere Sätze aus dem Unterricht", "order": 117, "added": "2026-11-04"}, "v118": {"pl": "Powiedz jedno zdanie o sobie.", "de": "Sag einen Satz über dich.", "cat": "Weitere Sätze aus dem Unterricht", "order": 118, "added": "2026-11-04"}, "v119": {"pl": "Zapytaj mnie.", "de": "Frag mich.", "cat": "Weitere Sätze aus dem Unterricht", "order": 119, "added": "2026-11-04"}, "v120": {"pl": "Spróbuj jeszcze raz.", "de": "Versuch es noch einmal.", "cat": "Weitere Sätze aus dem Unterricht", "order": 120, "added": "2026-11-04"}, "v121": {"pl": "Chwileczkę.", "de": "Einen Moment.", "cat": "Weitere Sätze aus dem Unterricht", "order": 121, "added": "2026-11-04"}, "v122": {"pl": "Rozumiem.", "de": "Ich verstehe.", "cat": "Weitere Sätze aus dem Unterricht", "order": 122, "added": "2026-11-04"}, "v123": {"pl": "Na dziś wystarczy.", "de": "Für heute reicht es.", "cat": "Weitere Sätze aus dem Unterricht", "order": 123, "added": "2026-11-04"}, "v124": {"pl": "Z Niemiec", "de": "Aus Deutschland", "cat": "Weitere Sätze aus dem Unterricht", "order": 124, "added": "2026-11-04"}, "v125": {"pl": "W Niemczech", "de": "In Deutschland", "cat": "Weitere Sätze aus dem Unterricht", "order": 125, "added": "2026-11-04"}, "v126": {"pl": "Do domu", "de": "Nach Hause", "cat": "Weitere Sätze aus dem Unterricht", "order": 126, "added": "2026-11-04"}};
+const KEY="slowka.data.v1";
+let fileHandle=null, saveTimer=null;
+function snapshot(){return {app:"slowka-trainer",version:1,saved:new Date().toISOString(),vocab:Object.fromEntries(VOCAB),progress:Object.fromEntries(PROG)}}
+function applyData(d){if(!d||typeof d!=="object"||!d.vocab)throw new Error("Keine gültige Trainer-Datei");VOCAB=new Map(Object.entries(d.vocab));PROG=new Map(Object.entries(d.progress||{}));}
+function persist(){
+  try{localStorage.setItem(KEY,JSON.stringify(snapshot()))}catch(e){}
+  if(fileHandle){clearTimeout(saveTimer);saveTimer=setTimeout(writeFile,600)}
+}
+async function writeFile(){
+  try{const w=await fileHandle.createWritable();await w.write(JSON.stringify(snapshot(),null,1));await w.close();
+    $("fileState").textContent="Automatisch gespeichert in „"+fileHandle.name+"“ · "+new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})}
+  catch(e){$("fileState").textContent="Datei konnte nicht geschrieben werden – bitte neu verbinden";fileHandle=null}
+}
+async function putVocab(id,obj){VOCAB.set(id,obj);persist()}
+async function delVocab(id){VOCAB.delete(id);PROG.delete(id);persist()}
+async function putProg(id,obj){PROG.set(id,obj);persist()}
+
+function init(){
+  let d=null;try{d=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
+  try{applyData(d||{vocab:SEED,progress:{}})}catch(e){applyData({vocab:SEED,progress:{}})}
+  if(!d)persist();
+  renderAll();renderStage();
+  if("showSaveFilePicker" in window)$("connectBtn").hidden=false;
+}
+$("exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(snapshot(),null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="slowka-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast("JSON gespeichert");
+};
+$("importFile").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{applyData(JSON.parse(await f.text()));session=null;persist();renderAll();renderStage();toast(VOCAB.size+" Vokabeln geladen")}
+  catch(err){toast("Datei nicht lesbar: "+err.message)}
+  e.target.value="";
+};
+$("connectBtn").onclick=async()=>{
+  try{
+    fileHandle=await window.showSaveFilePicker({suggestedName:"slowka.json",types:[{description:"JSON",accept:{"application/json":[".json"]}}]});
+    try{const t=await (await fileHandle.getFile()).text();if(t.trim()){applyData(JSON.parse(t));session=null;renderAll();renderStage();toast("Stand aus Datei geladen")}}catch(e){}
+    await writeFile();
+  }catch(e){}
+};
+/* ---------- Helfer ---------- */
+function banner(t){$("banner").textContent=t;$("banner").hidden=!t}
+let tt;function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,2200)}
+const norm=s=>(s||"").trim().toLowerCase().replace(/[.!?]+$/,"");
+function startOfDay(t){const d=new Date(t);d.setHours(0,0,0,0);return d.getTime()}
+function isDue(id,now){const p=PROG.get(id);return p&&p.due<=now}
+function cats(){return [...new Set([...VOCAB.values()].map(v=>v.cat||"Ohne Kategorie"))]}
+function sorted(){return [...VOCAB.entries()].sort((a,b)=>(a[1].order??1e9)-(b[1].order??1e9)||a[1].pl.localeCompare(b[1].pl,"pl"))}
+
+/* ---------- Statistik ---------- */
+function renderStats(){
+  const now=Date.now(); let due=0,neu=0,known=0; const box=[0,0,0,0,0,0,0,0];
+  for(const id of VOCAB.keys()){const p=PROG.get(id);if(!p){neu++;box[0]++;continue}
+    if(p.due<=now)due++; if(p.box>=4)known++; box[Math.min(7,p.box+1)]++;}
+  $("s-total").textContent=VOCAB.size;$("s-due").textContent=due;$("s-new").textContent=neu;$("s-known").textContent=known;
+  const tot=VOCAB.size||1, cols=["var(--line)","var(--bad)","var(--warm)","var(--mid)","var(--accent)","var(--accent)","var(--good)","var(--good)"];
+  $("boxes").innerHTML=box.map((n,i)=>n?`<i style="width:${n/tot*100}%;background:${cols[i]};opacity:${i===5?.7:i===6?.75:1}" title="${i?'Stufe '+(i-1):'Neu'}: ${n}"></i>`:"").join("");
+}
+function renderCats(){
+  const cs=cats(), sel=$("catSel"), cur=sel.value;
+  sel.innerHTML='<option value="">Alle Kategorien</option>'+cs.map(c=>`<option>${esc(c)}</option>`).join("");
+  if(cs.includes(cur))sel.value=cur;
+  $("catList").innerHTML=cs.map(c=>`<option value="${esc(c)}">`).join("");
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function renderAll(){renderStats();renderCats();renderList();}
+
+/* ---------- Lernen ---------- */
+function buildSession(){
+  const now=Date.now(), cat=$("catSel").value, nNew=+$("newCount").value;
+  const pool=sorted().filter(([,v])=>!cat||(v.cat||"Ohne Kategorie")===cat);
+  const due=pool.filter(([id])=>isDue(id,now)).sort((a,b)=>PROG.get(a[0]).due-PROG.get(b[0]).due).map(([id])=>id);
+  const fresh=pool.filter(([id])=>!PROG.get(id)).slice(0,nNew).map(([id])=>id);
+  const q=[...due,...fresh];
+  for(let i=q.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[q[i],q[j]]=[q[j],q[i]]}
+  return {queue:q,total:q.length,done:0,shown:false,dirOf:{}};
+}
+function nextDue(){let m=Infinity;for(const p of PROG.values())if(p.due<m)m=p.due;return m}
+function renderStage(){
+  const st=$("stage");
+  if(!VOCAB.size){st.innerHTML=`<div class="card"><div class="empty"><h2>Noch keine Vokabeln</h2><p>Trag unter „Vokabeln“ Deine ersten Wörter ein.</p><button class="btn primary" onclick="document.getElementById('tab-list').click()">Vokabeln eintragen</button></div></div>`;$("pbar").style.width="0";return}
+  if(!session||!session.queue.length){
+    const fin=session&&session.total;
+    const preview=buildSession();
+    const nd=nextDue(); const when=nd===Infinity?"":nd<=Date.now()?"":`Nächste Wiederholung: ${new Date(nd).toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"})}`;
+    st.innerHTML=`<div class="card"><div class="empty">
+      <h2>${fin?"Runde geschafft! Świetnie!":preview.total?"Bereit?":"Alles erledigt für heute"}</h2>
+      <p>${preview.total?`${preview.total} Karten in der nächsten Runde.`:esc(when)||"Füge neue Vokabeln hinzu oder erhöhe die Zahl neuer Karten."}</p>
+      ${preview.total?'<button class="btn primary" id="go">Runde starten</button>':""}
+    </div></div>`;
+    $("pbar").style.width=fin?"100%":"0";
+    if($("go"))$("go").onclick=()=>{session=buildSession();renderStage()};
+    return;
+  }
+  const id=session.queue[0], v=VOCAB.get(id);
+  if(!v){session.queue.shift();return renderStage()}
+  const p=PROG.get(id);
+  let d=session.dirOf[id]; if(!d){const m=$("dir").value;d=m==="mix"?(Math.random()<.5?"pl":"de"):m;session.dirOf[id]=d}
+  const front=d==="pl"?v.pl:v.de, back=d==="pl"?v.de:v.pl, plText=v.pl;
+  $("pbar").style.width=(session.done/session.total*100)+"%";
+  const lvl=p?`Stufe ${p.box}`:"neu";
+  st.innerHTML=`<div class="card">
+    <div class="card-top"><span class="tag">${esc(v.cat||"Ohne Kategorie")}</span><span>${lvl} · noch ${session.queue.length}</span></div>
+    <div class="dir">${d==="pl"?"POLNISCH → DEUTSCH":"DEUTSCH → POLNISCH"}</div>
+    <p class="word" lang="${d==="pl"?"pl":"de"}">${esc(front)}</p>
+    ${session.shown?`<p class="answer" lang="${d==="pl"?"de":"pl"}">${esc(back)}</p>`:""}
+    ${(d==="pl"||session.shown)&&"speechSynthesis" in window?`<button class="speak" id="speak">Vorlesen</button>`:""}
+  </div>
+  ${session.shown?`<div class="rate">
+    <button class="r1" data-r="1">Nochmal<small>kommt gleich wieder</small></button>
+    <button class="r2" data-r="2">Schwer<small>bald wiederholen</small></button>
+    <button class="r3" data-r="3">Gewusst<small>${fmtNext(p,3)}</small></button>
+  </div><p class="kbd">Tasten 1 · 2 · 3</p>`:`<button class="btn primary" id="flip" style="padding:14px">Antwort zeigen</button><p class="kbd">Leertaste</p>`}`;
+  if($("flip"))$("flip").onclick=flip;
+  if($("speak"))$("speak").onclick=()=>speak(plText);
+  st.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>rate(+b.dataset.r));
+}
+function fmtNext(p,r){const b=nextBox(p,r);const d=INTERVALS[b];return d===1?"morgen wieder":`in ${d} Tagen wieder`}
+function nextBox(p,r){const b=p?p.box:0;if(r===1)return 0;if(r===2)return Math.max(1,b);return p?Math.min(6,b+1):2}
+function flip(){if(!session||session.shown)return;session.shown=true;renderStage();$("stage").querySelector(".r3")?.focus()}
+function speak(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="pl-PL";u.rate=.9;speechSynthesis.speak(u)}catch(e){}}
+async function rate(r){
+  const id=session.queue.shift(), p=PROG.get(id), now=Date.now();
+  const box=nextBox(p,r);
+  let due=r===1?now:startOfDay(now)+INTERVALS[box]*DAY;
+  if(r===2&&box<=1)due=startOfDay(now)+DAY;
+  const np={box,due,right:(p?.right||0)+(r===3?1:0),wrong:(p?.wrong||0)+(r===1?1:0),last:now};
+  if(r===1){session.queue.splice(Math.min(3,session.queue.length),0,id)}else session.done++;
+  session.shown=false;
+  renderStage(); putProg(id,np).then(renderStats);
+}
+document.addEventListener("keydown",e=>{
+  if($("view-learn").hidden||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  if(!session||!session.queue.length)return;
+  if(e.code==="Space"&&!session.shown){e.preventDefault();flip()}
+  else if(session.shown&&["1","2","3"].includes(e.key)){e.preventDefault();rate(+e.key)}
+});
+["dir","catSel","newCount"].forEach(id=>$(id).addEventListener("change",()=>{if(id!=="dir"){session=null;renderStage()}else if(session){session.dirOf={};renderStage()}}));
+
+/* ---------- Liste ---------- */
+function renderList(){
+  const q=norm($("search").value), groups=new Map();
+  for(const [id,v] of sorted()){
+    if(q&&!norm(v.pl).includes(q)&&!norm(v.de).includes(q))continue;
+    const c=v.cat||"Ohne Kategorie"; if(!groups.has(c))groups.set(c,[]); groups.get(c).push([id,v]);
+  }
+  if(!groups.size){$("list").innerHTML=`<p class="note" style="text-align:center;padding:20px">${VOCAB.size?"Nichts gefunden.":"Noch keine Vokabeln – leg oben los."}</p>`;return}
+  let h="";
+  for(const [c,items] of groups){
+    h+=`<div class="cat">${esc(c)} · ${items.length}</div>`;
+    for(const [id,v] of items){const p=PROG.get(id),b=p?p.box:-1;
+      h+=`<div class="row"><span class="pl" lang="pl">${esc(v.pl)}</span><span class="de">${esc(v.de)}</span>
+      <span class="act"><span class="lvl" title="${p?'Stufe '+b:'neu'}">${[1,2,3,4,5,6].map(i=>`<i class="${b>=i?"on":""}"></i>`).join("")}</span>
+      <button class="icon" data-edit="${id}">Ändern</button><button class="icon danger" data-del="${id}">${armedDelete===id?"Wirklich?":"Löschen"}</button></span></div>`;}
+  }
+  $("list").innerHTML=h;
+}
+$("search").addEventListener("input",renderList);
+$("list").addEventListener("click",async e=>{
+  const ed=e.target.dataset.edit, dl=e.target.dataset.del;
+  if(ed){const v=VOCAB.get(ed);editId=ed;$("f-pl").value=v.pl;$("f-de").value=v.de;$("f-cat").value=v.cat||"";$("formTitle").textContent="Vokabel ändern";$("saveBtn").textContent="Speichern";$("cancelEdit").hidden=false;$("f-pl").focus();window.scrollTo({top:0,behavior:"smooth"})}
+  if(dl){if(armedDelete!==dl){armedDelete=dl;renderList();setTimeout(()=>{if(armedDelete===dl){armedDelete=null;renderList()}},4000);return}
+    armedDelete=null;try{await delVocab(dl);toast("Gelöscht")}catch(err){toast("Löschen fehlgeschlagen")}renderAll()}
+});
+function resetForm(){editId=null;$("addForm").reset();$("formTitle").textContent="Neue Vokabel";$("saveBtn").textContent="Hinzufügen";$("cancelEdit").hidden=true}
+$("cancelEdit").onclick=resetForm;
+function newId(){return "v"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function maxOrder(){let m=0;for(const v of VOCAB.values())if((v.order||0)>m)m=v.order;return m}
+$("addForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const pl=$("f-pl").value.trim(),de=$("f-de").value.trim(),cat=$("f-cat").value.trim()||"Neu";
+  if(!pl||!de)return;
+  if(!editId&&[...VOCAB.values()].some(v=>norm(v.pl)===norm(pl))){toast("„"+pl+"“ gibt es schon");return}
+  const id=editId||newId(), old=VOCAB.get(id);
+  try{await putVocab(id,{pl,de,cat,order:old?.order??maxOrder()+1,added:old?.added||new Date().toISOString().slice(0,10)});toast(editId?"Gespeichert":"Hinzugefügt");}
+  catch(err){toast("Speichern fehlgeschlagen")}
+  const keep=cat; resetForm(); $("f-cat").value=keep; $("f-pl").focus(); renderAll();
+});
+$("bulkBtn").onclick=async()=>{
+  const cat=$("bulkCat").value.trim()||"Neu", have=new Set([...VOCAB.values()].map(v=>norm(v.pl)));
+  let o=maxOrder(),n=0,skip=0;
+  for(const line of $("bulk").value.split(/\n/)){
+    const parts=line.split(/\t|;/).map(s=>s.trim()).filter(Boolean); if(parts.length<2)continue;
+    if(have.has(norm(parts[0]))){skip++;continue}
+    have.add(norm(parts[0]));
+    try{await putVocab(newId(),{pl:parts[0],de:parts.slice(1).join("; "),cat,order:++o,added:new Date().toISOString().slice(0,10)});n++}catch(e){}
+  }
+  $("bulk").value=""; toast(`${n} eingefügt${skip?`, ${skip} schon vorhanden`:""}`); renderAll();
+};
+
+/* ---------- Tabs ---------- */
+function show(t){$("tab-learn").setAttribute("aria-selected",t==="learn");$("tab-list").setAttribute("aria-selected",t==="list");$("view-learn").hidden=t!=="learn";$("view-list").hidden=t!=="list";if(t==="learn")renderStage()}
+$("tab-learn").onclick=()=>show("learn");$("tab-list").onclick=()=>show("list");
+
+init();
+})();
+</script>
+</body>
+</html>
